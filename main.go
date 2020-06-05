@@ -6,12 +6,15 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/mgr"
 
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/urfave/cli"
 )
 
@@ -21,9 +24,27 @@ var authors = []*cli.Author{
 	},
 }
 
-func openFileAndCheck(fileName string) {
-	timeNow := time.Now().Local()
+// Path to database (sqlite)
+var dbPath string
 
+// File path containing list of computers
+var filePath string
+
+// Database file
+var db *gorm.DB
+
+func openFileAndCheck() {
+
+	db, err := gorm.Open("sqlite3", dbPath)
+	if err != nil {
+		panic("failed to connect database")
+	}
+
+	db.AutoMigrate(&Computer{}, &VcError{})
+
+	defer db.Close()
+
+	timeNow := time.Now().Local()
 	// Setup log file
 	logFileName := fmt.Sprintf("%v-%v-%v.log", timeNow.Year(), int(timeNow.Month()), timeNow.Day())
 	curDir, err := filepath.Abs(".")
@@ -43,7 +64,7 @@ func openFileAndCheck(fileName string) {
 	var wg sync.WaitGroup
 
 	// Open the file that was passed as an argument to the program
-	file, err := os.Open(fileName)
+	file, err := os.Open(filePath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -117,6 +138,19 @@ func openFileAndCheck(fileName string) {
 										break queryLoop
 									}
 
+									computer := Computer{Name: computerName}
+									// db.FirstOrCreate(&computer, Computer{Name: computerName})
+									db.Where(Computer{Name: computerName}).FirstOrCreate(&computer)
+									// db.Model(&computer).Update("vcErrors", append(computer.VcErrors, VcError{DateTime: time.Now()}))
+									vcError := VcError{
+										Computer: computerName,
+										Status:   "stopped",
+									}
+									db.Save(computer)
+									db.Model(&computer).Association("VcErrors").Append(vcError)
+									db.Save(computer)
+									db.Save(vcError)
+
 									log.Printf("[%s] starting vcUpdater\n", computerName)
 
 								case svc.StartPending:
@@ -142,6 +176,19 @@ func openFileAndCheck(fileName string) {
 									if err != nil {
 										log.Printf("[%s] %v", computerName, err)
 									}
+
+									computer := Computer{Name: computerName}
+									// db.FirstOrCreate(&computer, Computer{Name: computerName})
+									db.Where(Computer{Name: computerName}).FirstOrCreate(&computer)
+									// db.Model(&computer).Update("vcErrors", append(computer.VcErrors, VcError{DateTime: time.Now()}))
+									vcError := VcError{
+										Computer: computerName,
+										Status:   "paused",
+									}
+									db.Save(computer)
+									db.Model(&computer).Association("VcErrors").Append(vcError)
+									db.Save(computer)
+									db.Save(vcError)
 
 									log.Printf("[%s] resuming vcUpdater\n", computerName)
 
@@ -177,25 +224,40 @@ func openFileAndCheck(fileName string) {
 func main() {
 
 	app := &cli.App{
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:        "dbPath",
+				Aliases:     []string{"db"},
+				Usage:       "Path to database file (sqlite3). If no path is specified, memory will be used.",
+				Value:       ":memory:",
+				TakesFile:   true,
+				Destination: &dbPath,
+			},
+			&cli.StringFlag{
+				Name:        "computerList",
+				Usage:       "Path to file containing list of remote computers on a network.",
+				TakesFile:   true,
+				Destination: &filePath,
+				Required:    true,
+			},
+		},
 		Name:      "vuecentric-checker",
 		Usage:     "vuecentric-checker ensures VueCentric service is running for a list of Windows computers.",
-		UsageText: "vuecentric-checker <ListOfComputers> [Required] (ListOfComputers is a file containing a list of remote computers on a network)",
+		UsageText: "vuecentric-checker ensures VueCentric service is running for a list of Windows computers.",
 		ArgsUsage: "ListOfComputers (file containing a list of remote computers on a network)",
 		Copyright: "Copyright (c) 2020 Dixon Begay aka shadez95",
 		Authors:   authors,
 		Action: func(c *cli.Context) error {
-			// Check if args present first. If not, throw up helper info
-			if c.Args().Present() {
-				openFileAndCheck(c.Args().First())
-				return nil
+
+			// Check if flags are present first. If not, continue and throw up helper info
+			if c.NumFlags() > 0 {
+				openFileAndCheck()
 			}
-
-			// If no argument is passed, then show the app help info
-			cli.ShowAppHelp(c)
-
 			return nil
 		},
 	}
+
+	sort.Sort(cli.FlagsByName(app.Flags))
 
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)

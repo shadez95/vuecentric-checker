@@ -1,6 +1,12 @@
 # vuecentric-checker
 vuecentric-checker ensures VueCentric updater service is running for a list of Windows computers.
 
+## Installation
+
+Use git to clone the repo and then run `go build` inside the project folder. This will build a portable binary. If you have a go environment setup, just run `go install` inside the project directory.
+
+## Usage
+
 The program has one requirement: `-computerList`. Set `-computerList` to a list of computer names in a file.
 
 Example:
@@ -17,5 +23,5 @@ Example:
 vuecentric-checker -computerList /path/to/file/ListOfComputers.txt -db /path/to/sql/file/sqlite3.db
 ```
 
-## Installation
-Use git to clone the repo and then run `go build` inside the project folder. This will build a portable binary. If you have a go environment setup, just run `go install` inside the project directory.
+## Contribute
+I'm always open to contributions. Create a pull request or submit an issue to let me know what you want to contribute. Any help to improve this is appreciated.

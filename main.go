@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"sort"
 	"sync"
 	"time"
@@ -43,22 +42,6 @@ func openFileAndCheck() {
 	db.AutoMigrate(&Computer{}, &VcError{})
 
 	defer db.Close()
-
-	timeNow := time.Now().Local()
-	// Setup log file
-	logFileName := fmt.Sprintf("%v-%v-%v.log", timeNow.Year(), int(timeNow.Month()), timeNow.Day())
-	curDir, err := filepath.Abs(".")
-	if err != nil {
-		log.Fatalf("error opening file: %v", err)
-	}
-	f, err := os.OpenFile(filepath.Join(curDir, "logs", logFileName), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("error opening file: %v", err)
-	}
-	defer f.Close()
-
-	// Set logging output to the above log file
-	log.SetOutput(f)
 
 	// Create the waitgroup that will count number of goroutines
 	var wg sync.WaitGroup

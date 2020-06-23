@@ -56,8 +56,7 @@ func openFileAndCheck() {
 	// Setup the reader for the file that was passed as an argument to the program
 	scanner := bufio.NewScanner(file)
 
-	// log.Println("------------ Starting to check if vuecentric service is running on computers ------------")
-	// Not logging the above anymore. Isn't useful and was originally there for debugging. 4/9/2020
+	log.Println("------------ Starting to check if vuecentric service is running on computers ------------")
 
 	// Start reading file line by line
 	for scanner.Scan() {
@@ -66,8 +65,6 @@ func openFileAndCheck() {
 			wg.Add(1)
 
 			//Connect to remote computer
-			// log.Printf("[%s] Connecting...\n", computerName)
-			// Not logging the above anymore. Isn't useful and was originally there for debugging. 4/9/2020
 			computer, err := mgr.ConnectRemote(computerName)
 			if err != nil {
 				log.Printf("[%s] %v", computerName, err)
@@ -122,9 +119,7 @@ func openFileAndCheck() {
 									}
 
 									computer := Computer{Name: computerName}
-									// db.FirstOrCreate(&computer, Computer{Name: computerName})
 									db.Where(Computer{Name: computerName}).FirstOrCreate(&computer)
-									// db.Model(&computer).Update("vcErrors", append(computer.VcErrors, VcError{DateTime: time.Now()}))
 									vcError := VcError{
 										Computer: computerName,
 										Status:   "stopped",
@@ -161,9 +156,7 @@ func openFileAndCheck() {
 									}
 
 									computer := Computer{Name: computerName}
-									// db.FirstOrCreate(&computer, Computer{Name: computerName})
 									db.Where(Computer{Name: computerName}).FirstOrCreate(&computer)
-									// db.Model(&computer).Update("vcErrors", append(computer.VcErrors, VcError{DateTime: time.Now()}))
 									vcError := VcError{
 										Computer: computerName,
 										Status:   "paused",
@@ -183,8 +176,6 @@ func openFileAndCheck() {
 						}
 					}
 				}
-				// log.Printf("[%s] Disconnecting...\n", computerName)
-				// Not logging the above anymore. Isn't useful and was originally there for debugging. 4/9/2020
 				// Disconnect from the computer
 				computer.Disconnect()
 			}
@@ -200,8 +191,7 @@ func openFileAndCheck() {
 
 	// Allow program to run through all goroutines before exiting
 	wg.Wait()
-	// log.Println("------------ Finished checking computers ------------")
-	// Not logging the above anymore. Isn't useful and was originally there for debugging. 4/9/2020
+	log.Println("------------ Finished checking computers ------------")
 }
 
 func main() {
